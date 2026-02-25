@@ -5,7 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     base_url: str = "http://localhost"
-    api_key: str = "mock"
+    custom_path: str = ""
+    api_key: str = "api_key"
     concurrency: int = 5
 
     model_config = SettingsConfigDict(env_prefix="SHIELD_", env_file=".env")

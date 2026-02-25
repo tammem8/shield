@@ -19,10 +19,14 @@ async def call_api(
     settings = get_settings()
     async with semaphore:
         request = ShieldRequest(text=record.text)
+        url = f"{settings.base_url.rstrip('/')}/{settings.custom_path.lstrip('/')}"
         response = await client.post(
-            settings.base_url,
+            url,
             json=request.model_dump(),
-            headers={"Authorization": f"Bearer {settings.api_key}"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.api_key}",
+            },
         )
         response.raise_for_status()
         data = ShieldResponse.model_validate(response.json())
