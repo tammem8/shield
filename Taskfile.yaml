@@ -1,0 +1,31 @@
+version: "3"
+
+vars:
+  CLI: "uv run shield"
+
+tasks:
+
+  install:
+    desc: Install project dependencies
+    cmds:
+      - uv sync
+
+  lint:
+    desc: Run linter
+    cmds:
+      - uv run ruff check --fix .
+
+  format:
+    desc: Format code
+    cmds:
+      - uv run ruff format .
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest
+
+  shield:analyze:
+    desc: Run prompt shield analysis
+    cmds:
+      - "{{.CLI}} analyze"
