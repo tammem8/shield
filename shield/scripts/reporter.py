@@ -1,6 +1,8 @@
 import csv
+import json
 from pathlib import Path
 
+import pandas as pd
 import plotly.graph_objects as go
 
 from shield.models.evaluation import EvaluationMetrics, PredictionResult
@@ -12,6 +14,7 @@ def save_results(results: list[PredictionResult], metrics: EvaluationMetrics) ->
     RESULTS_DIR.mkdir(exist_ok=True)
     _save_csv(results)
     _save_confusion_matrix(metrics)
+    _save_json(results, metrics)
     return RESULTS_DIR
 
 
@@ -19,9 +22,42 @@ def _save_csv(results: list[PredictionResult]) -> None:
     path = RESULTS_DIR / "predictions.csv"
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["text", "label", "predicted", "language"])
+        writer.writerow(["text", "label", "predicted", "score", "language"])
         for r in results:
-            writer.writerow([r.text, r.true_label, r.predicted_label, r.language])
+            writer.writerow([r.text, r.true_label, r.predicted_label, r.score, r.language])
+
+
+def _compute_metrics_dict(group: pd.DataFrame) -> dict:
+    tp = int(((group["true_label"] == 1) & (group["predicted_label"] == 1)).sum())
+    fp = int(((group["true_label"] == 0) & (group["predicted_label"] == 1)).sum())
+    fn = int(((group["true_label"] == 1) & (group["predicted_label"] == 0)).sum())
+    tn = int(((group["true_label"] == 0) & (group["predicted_label"] == 0)).sum())
+    total = len(group)
+    accuracy = (tp + tn) / total if total > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    return {"count": total, "accuracy": round(accuracy, 4), "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4)}
+
+
+def _save_json(results: list[PredictionResult], metrics: EvaluationMetrics) -> None:
+    df = pd.DataFrame([r.model_dump() for r in results])
+    per_language = {
+        lang: _compute_metrics_dict(group)
+        for lang, group in df.groupby("language")
+    }
+    output = {
+        "global": {
+            "count": metrics.total,
+            "accuracy": round(metrics.accuracy, 4),
+            "precision": round(metrics.precision, 4),
+            "recall": round(metrics.recall, 4),
+            "f1": round(metrics.f1, 4),
+        },
+        "per_language": per_language,
+    }
+    path = RESULTS_DIR / "metrics.json"
+    path.write_text(json.dumps(output, indent=2), encoding="utf-8")
 
 
 def _save_confusion_matrix(m: EvaluationMetrics) -> None:

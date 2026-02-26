@@ -10,7 +10,7 @@ class PredictionResult(BaseModel):
     text: str
     true_label: int
     predicted_label: int
-    scores: list[float]
+    score: float
     language: str
 
 
