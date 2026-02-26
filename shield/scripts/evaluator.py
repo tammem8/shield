@@ -5,24 +5,24 @@ from tqdm.asyncio import tqdm_asyncio
 
 from shield.client import call_api
 from shield.config.settings import get_settings
-from shield.models import DatasetRecord, EvaluationMetrics, PredictionResult
+from shield.models.evaluation import DatasetRecord, EvaluationMetrics, PredictionResult
 
 
 class Evaluator:
     def __init__(self, records: list[DatasetRecord]) -> None:
         self.records = records
 
-    async def run(self) -> EvaluationMetrics:
+    async def run(self) -> tuple[list[PredictionResult], EvaluationMetrics]:
         settings = get_settings()
         semaphore = asyncio.Semaphore(settings.concurrency)
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
             tasks = [call_api(client, record, semaphore) for record in self.records]
             results: list[PredictionResult] = await tqdm_asyncio.gather(
                 *tasks, desc="Evaluating"
             )
 
-        return self.compute_metrics(results)
+        return results, self.compute_metrics(results)
 
     def compute_metrics(self, results: list[PredictionResult]) -> EvaluationMetrics:
         tp = sum(1 for r in results if r.true_label == 1 and r.predicted_label == 1)

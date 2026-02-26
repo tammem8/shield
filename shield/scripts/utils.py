@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from shield.models import DatasetRecord
+from shield.models.evaluation import DatasetRecord
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 

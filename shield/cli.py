@@ -4,7 +4,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from shield.models.evaluator import Evaluator
+from shield.scripts.evaluator import Evaluator
+from shield.scripts.reporter import save_results
 from shield.scripts.utils import load_dataset
 
 console = Console()
@@ -21,7 +22,7 @@ def analyze() -> None:
     records = load_dataset()
     console.print(f"Loaded [bold]{len(records)}[/bold] records\n")
 
-    metrics = asyncio.run(Evaluator(records).run())
+    results, metrics = asyncio.run(Evaluator(records).run())
 
     table = Table(title="Evaluation Results", show_header=True)
     table.add_column("Metric", style="cyan", min_width=20)
@@ -39,6 +40,9 @@ def analyze() -> None:
     table.add_row("True Negatives (TN)", str(metrics.tn))
 
     console.print(table)
+
+    output_dir = save_results(results, metrics)
+    console.print(f"\nResults saved to [bold]{output_dir}/[/bold]")
 
 
 if __name__ == "__main__":
