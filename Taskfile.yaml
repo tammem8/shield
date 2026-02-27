@@ -25,7 +25,12 @@ tasks:
     cmds:
       - uv run pytest
 
-  shield:analyze:
-    desc: Run prompt shield analysis
+  shield:preprocess:
+    desc: "Preprocess test_data.csv. Options: N=<int> (limit rows), LD=true (detect language), A=true (augment)"
     cmds:
-      - "{{.CLI}} analyze"
+      - "{{.CLI}} preprocess test_data.csv {{if .N}}-n {{.N}}{{end}} {{if .LD}}-ld{{end}} {{if .A}}-a{{end}}"
+
+  shield:analyze:
+    desc: Run prompt shield analysis on test_data.csv
+    cmds:
+      - "{{.CLI}} analyze test_data.csv"

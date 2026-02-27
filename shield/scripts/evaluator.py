@@ -1,10 +1,7 @@
-import asyncio
-
 import httpx
-from tqdm.asyncio import tqdm_asyncio
+from tqdm import tqdm
 
 from shield.client import call_api
-from shield.config.settings import get_settings
 from shield.models.evaluation import DatasetRecord, EvaluationMetrics, PredictionResult
 
 
@@ -12,15 +9,20 @@ class Evaluator:
     def __init__(self, records: list[DatasetRecord]) -> None:
         self.records = records
 
-    async def run(self) -> tuple[list[PredictionResult], EvaluationMetrics]:
-        settings = get_settings()
-        semaphore = asyncio.Semaphore(settings.concurrency)
+    def run(
+        self, threshold: float | None = None
+    ) -> tuple[list[PredictionResult], EvaluationMetrics]:
+        with httpx.Client(timeout=30.0, verify=False) as client:
+            results: list[PredictionResult] = [
+                call_api(client, record)
+                for record in tqdm(self.records, desc="Evaluating")
+            ]
 
-        async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
-            tasks = [call_api(client, record, semaphore) for record in self.records]
-            results: list[PredictionResult] = await tqdm_asyncio.gather(
-                *tasks, desc="Evaluating"
-            )
+        if threshold is not None:
+            results = [
+                r.model_copy(update={"predicted_label": int(r.score > threshold)})
+                for r in results
+            ]
 
         return results, self.compute_metrics(results)
 

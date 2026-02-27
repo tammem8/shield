@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class DatasetRecord(BaseModel):
     text: str
     label: int  # 0 = benign, 1 = jailbreak
+    language: str | None = None
 
 
 class PredictionResult(BaseModel):

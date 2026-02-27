@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost"
     custom_path: str = ""
     api_key: str = "api_key"
-    concurrency: int = 5
+    model_name: str = "model_name"
 
     model_config = SettingsConfigDict(env_prefix="SHIELD_", env_file=".env")
 

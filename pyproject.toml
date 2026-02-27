@@ -24,6 +24,8 @@ dependencies = [
     "plotly>=6.5.2",
     "fast-langdetect>=1.0.0",
     "pandas>=2.3.3",
+    "openai>=2.24.0",
+    "python-dotenv>=1.2.1",
 ]
 
 [project.scripts]

@@ -10,21 +10,26 @@ from shield.models.evaluation import EvaluationMetrics, PredictionResult
 RESULTS_DIR = Path("results")
 
 
-def save_results(results: list[PredictionResult], metrics: EvaluationMetrics) -> Path:
-    RESULTS_DIR.mkdir(exist_ok=True)
-    _save_csv(results)
-    _save_confusion_matrix(metrics)
-    _save_json(results, metrics)
-    return RESULTS_DIR
+def save_results(
+    results: list[PredictionResult], metrics: EvaluationMetrics, dataset_name: str
+) -> Path:
+    output_dir = RESULTS_DIR / dataset_name.split(".")[0]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _save_csv(results, output_dir)
+    _save_confusion_matrix(metrics, output_dir)
+    _save_json(results, metrics, output_dir)
+    return output_dir
 
 
-def _save_csv(results: list[PredictionResult]) -> None:
-    path = RESULTS_DIR / "predictions.csv"
+def _save_csv(results: list[PredictionResult], output_dir: Path) -> None:
+    path = output_dir / "predictions.csv"
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["text", "label", "predicted", "score", "language"])
         for r in results:
-            writer.writerow([r.text, r.true_label, r.predicted_label, r.score, r.language])
+            writer.writerow(
+                [r.text, r.true_label, r.predicted_label, r.score, r.language]
+            )
 
 
 def _compute_metrics_dict(group: pd.DataFrame) -> dict:
@@ -36,15 +41,24 @@ def _compute_metrics_dict(group: pd.DataFrame) -> dict:
     accuracy = (tp + tn) / total if total > 0 else 0.0
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-    return {"count": total, "accuracy": round(accuracy, 4), "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4)}
+    f1 = (
+        2 * precision * recall / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
+    return {
+        "count": total,
+        "accuracy": round(accuracy, 4),
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+    }
 
 
-def _save_json(results: list[PredictionResult], metrics: EvaluationMetrics) -> None:
+def _save_json(results: list[PredictionResult], metrics: EvaluationMetrics, output_dir: Path) -> None:
     df = pd.DataFrame([r.model_dump() for r in results])
     per_language = {
-        lang: _compute_metrics_dict(group)
-        for lang, group in df.groupby("language")
+        lang: _compute_metrics_dict(group) for lang, group in df.groupby("language")
     }
     output = {
         "global": {
@@ -56,11 +70,11 @@ def _save_json(results: list[PredictionResult], metrics: EvaluationMetrics) -> N
         },
         "per_language": per_language,
     }
-    path = RESULTS_DIR / "metrics.json"
+    path = output_dir / "metrics.json"
     path.write_text(json.dumps(output, indent=2), encoding="utf-8")
 
 
-def _save_confusion_matrix(m: EvaluationMetrics) -> None:
+def _save_confusion_matrix(m: EvaluationMetrics, output_dir: Path) -> None:
     z = [[m.tn, m.fp], [m.fn, m.tp]]
     labels = ["Benign", "Jailbreak"]
     text = [[f"TN = {m.tn}", f"FP = {m.fp}"], [f"FN = {m.fn}", f"TP = {m.tp}"]]
@@ -82,5 +96,5 @@ def _save_confusion_matrix(m: EvaluationMetrics) -> None:
         yaxis={"autorange": "reversed"},
     )
 
-    path = RESULTS_DIR / "confusion_matrix.html"
+    path = output_dir / "confusion_matrix.html"
     fig.write_html(str(path))
